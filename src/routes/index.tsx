@@ -1,5 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  FolderOpen,
+  Linkedin,
+  Mail,
+  Palette,
+  Search,
+  Table2,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 
 import heroPortrait from "@/assets/hero-portrait.jpg";
 import sampleInbox from "@/assets/sample-inbox.jpg";
@@ -31,39 +43,39 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const services = [
+const services: { icon: LucideIcon; tint: string; title: string; body: string }[] = [
   {
-    icon: "✉️",
+    icon: Mail,
     tint: "bg-brand/15",
     title: "Email Management",
     body: "Inbox triage, drafting replies, and keeping your email calm and on top of things.",
   },
   {
-    icon: "📊",
+    icon: Table2,
     tint: "bg-accent/15",
     title: "Data Entry & Spreadsheets",
     body: "Accurate entry, cleaning, and organizing data into clear, usable sheets.",
   },
   {
-    icon: "🎨",
+    icon: Palette,
     tint: "bg-yellow/40",
     title: "Canva & Graphic Design",
     body: "Simple social graphics, flyers, and visuals that look polished and on-brand.",
   },
   {
-    icon: "🔎",
+    icon: Search,
     tint: "bg-mint/50",
     title: "Web Research",
     body: "Finding, verifying, and summarizing information into neat, cited notes.",
   },
   {
-    icon: "🗂️",
+    icon: FolderOpen,
     tint: "bg-lilac/50",
     title: "File & Document Organization",
     body: "Consistent naming, folders, and templates so everything is easy to find.",
   },
   {
-    icon: "📅",
+    icon: CalendarDays,
     tint: "bg-brand/15",
     title: "Calendar & Task Management",
     body: "Scheduling, reminders, and light task tracking to keep priorities clear.",
