@@ -246,8 +246,8 @@ function Index() {
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => (
               <div key={service.title} className="rounded-3xl border-2 border-ink bg-white p-6 shadow-hard">
-                <div className={`grid size-12 place-items-center rounded-2xl text-2xl ${service.tint}`} aria-hidden="true">
-                  {service.icon}
+                <div className={`grid size-12 place-items-center rounded-2xl ${service.tint}`} aria-hidden="true">
+                  <service.icon className="size-6 text-ink" strokeWidth={2} />
                 </div>
                 <h3 className="mt-4 font-display text-xl font-semibold">{service.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink/70">{service.body}</p>
@@ -255,8 +255,8 @@ function Index() {
             ))}
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-ink p-6 text-cream shadow-hard-brand sm:col-span-2 lg:col-span-3">
               <div className="flex items-center gap-4">
-                <div className="grid size-12 place-items-center rounded-2xl bg-white/10 text-2xl" aria-hidden="true">
-                  🛠️
+                <div className="grid size-12 place-items-center rounded-2xl bg-white/10" aria-hidden="true">
+                  <Wrench className="size-6 text-cream" strokeWidth={2} />
                 </div>
                 <div>
                   <h3 className="font-display text-xl font-semibold">Basic Technical Support</h3>
@@ -366,11 +366,15 @@ function Index() {
                 </p>
                 <div className="mt-6 space-y-3 text-sm font-semibold">
                   <p className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">✉️</span>
+                    <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">
+                      <Mail className="size-4" strokeWidth={2} />
+                    </span>
                     your.email@example.com <span className="text-xs font-medium text-cream/60">(add yours)</span>
                   </p>
                   <p className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">💬</span>
+                    <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">
+                      <Linkedin className="size-4" strokeWidth={2} />
+                    </span>
                     LinkedIn · Portfolio <span className="text-xs font-medium text-cream/60">(add links)</span>
                   </p>
                 </div>
@@ -386,7 +390,7 @@ function Index() {
               </div>
               {formState === "sent" ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-ink bg-white/95 p-8 text-center text-ink">
-                  <span className="text-4xl" aria-hidden="true">✅</span>
+                  <CheckCircle2 className="size-10 text-accent" strokeWidth={2} aria-hidden="true" />
                   <p className="mt-4 font-display text-xl font-semibold">Thanks for reaching out!</p>
                   <p className="mt-2 text-sm text-ink/70">
                     This form is a placeholder for now — once your email is connected, messages will go straight to
