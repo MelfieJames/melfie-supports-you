@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -7,34 +7,29 @@ import {
   Linkedin,
   Mail,
   Palette,
-  Search,
+  X,
   Table2,
-  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
-import heroPortrait from "@/assets/hero-portrait.jpg";
-import sampleInbox from "@/assets/sample-inbox.jpg";
-import sampleSocial from "@/assets/sample-social.jpg";
+import pelPhoto from "@/assets/pel.jpg";
 import sampleSpreadsheet from "@/assets/sample-spreadsheet.jpg";
-import sampleResearch from "@/assets/sample-research.jpg";
-import sampleDocument from "@/assets/sample-document.jpg";
 import sampleDashboard from "@/assets/sample-dashboard.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Melfie James Antonio — Virtual Assistant & Admin Support" },
+      { title: "Melfie James Antonio — Aspiring Virtual Assistant" },
       {
         name: "description",
         content:
-          "Reliable virtual assistant support: email management, data entry, web research, Canva content, and document organization. BS Computer Science graduate open to VA and admin support work.",
+          "BS Computer Science graduate seeking virtual assistance and administrative/digital support opportunities: email management, data entry, web research, Canva content, and document organization.",
       },
-      { property: "og:title", content: "Melfie James Antonio — Virtual Assistant & Admin Support" },
+      { property: "og:title", content: "Melfie James Antonio — Aspiring Virtual Assistant" },
       {
         property: "og:description",
         content:
-          "Reliable virtual assistant support: email management, data entry, web research, Canva content, and document organization.",
+          "Motivated CS graduate entering virtual assistance — reliable support with email, data entry, research, Canva, and document organization.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -63,10 +58,10 @@ const services: { icon: LucideIcon; tint: string; title: string; body: string }[
     body: "Simple social graphics, flyers, and visuals that look polished and on-brand.",
   },
   {
-    icon: Search,
+    icon: CalendarDays,
     tint: "bg-mint/50",
-    title: "Web Research",
-    body: "Finding, verifying, and summarizing information into neat, cited notes.",
+    title: "Calendar Management",
+    body: "Keeping schedules, meetings, deadlines, and reminders well organized and easy to follow.",
   },
   {
     icon: FolderOpen,
@@ -77,53 +72,53 @@ const services: { icon: LucideIcon; tint: string; title: string; body: string }[
   {
     icon: CalendarDays,
     tint: "bg-brand/15",
-    title: "Calendar & Task Management",
-    body: "Scheduling, reminders, and light task tracking to keep priorities clear.",
+    title: "Task Management",
+    body: "Prioritizing work, tracking progress, and keeping daily tasks moving without confusion.",
   },
 ];
 
 const samples = [
   {
-    src: sampleInbox,
+    src: "/email.png",
     alt: "Sample mockup of an organized email inbox with labeled folders",
     tint: "bg-lilac/40",
     title: "Organized Email Inbox",
-    body: "A labeled, sorted inbox system with quick-reply templates.",
+    body: "A Gmail inbox organized with custom labels, priorities, follow-ups, filters, and quick-reply templates.",
   },
   {
-    src: sampleSocial,
+    src: "/canva.png",
     alt: "Sample Canva social media promo graphic with bold typography",
     tint: "bg-brand/15",
-    title: "Social Media Graphic",
-    body: "A Canva-made promo post with a consistent look and feel.",
+    title: "Canva Graphic Design",
+    body: "A Canva-designed event graphic demonstrating clean layout, typography, and visual consistency.",
   },
   {
-    src: sampleSpreadsheet,
+    src: "/excel.png",
     alt: "Sample cleaned spreadsheet with sorted columns and highlighted totals",
     tint: "bg-mint/50",
     title: "Cleaned Spreadsheet",
-    body: "A messy data sheet tidied, de-duplicated, and formatted.",
+    body: "A customer dataset cleaned, organized, formatted, sorted, and prepared for easier information management.",
   },
   {
-    src: sampleResearch,
-    alt: "Sample one-page web research report with headings and citations",
+    src: "/calendar.png",
+    alt: "Sample weekly calendar layout with meetings and reminders",
     tint: "bg-accent/15",
-    title: "Web Research Report",
-    body: "A structured summary with sources and clear takeaways.",
+    title: "Calendar & Schedule Management",
+    body: "A structured Google Calendar demonstrating meetings, deadlines, reminders, and organized weekly scheduling.",
   },
   {
-    src: sampleDocument,
+    src: "/format.png",
     alt: "Sample professionally formatted document cover and body",
     tint: "bg-yellow/40",
     title: "Formatted Document",
-    body: "A consistent template with headings, spacing, and styling.",
+    body: "A professionally formatted business report with consistent headings, spacing, typography, and structured information.",
   },
   {
-    src: sampleDashboard,
+    src: "/dashboard.png",
     alt: "Sample task management dashboard with checklists and progress",
     tint: "bg-lilac/40",
-    title: "Task Dashboard",
-    body: "A light task tracker showing priorities and status at a glance.",
+    title: "Task Management Dashboard",
+    body: "A Trello workflow organizing tasks by priority, deadlines, and progress across To Do, In Progress, and Completed stages.",
   },
 ];
 
@@ -135,15 +130,131 @@ const tools = [
   "Microsoft Office",
   "Excel / Sheets",
   "Task Managers",
-  "Web Research",
+  "Calendar Management",
 ];
+
+const CONTACT_EMAIL = "melfiejamesinsongantonio1@gmail.com";
+
+type SentMessage = {
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+};
+
+function buildMailDraft(details: SentMessage) {
+  const subject = details.topic
+    ? `Portfolio inquiry: ${details.topic}`
+    : "New message from melfie. portfolio";
+  const body = [
+    "New message from the portfolio contact form",
+    "",
+    `Name: ${details.name}`,
+    `Email: ${details.email}`,
+    `Topic: ${details.topic || "—"}`,
+    "",
+    "Message:",
+    details.message,
+  ].join("\n");
+
+  return { subject, body };
+}
+
+function gmailComposeUrl(details: SentMessage) {
+  const { subject, body } = buildMailDraft(details);
+  return `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent(CONTACT_EMAIL)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function SentMessageCard({ details, onEdit }: { details: SentMessage; onEdit: () => void }) {
+  return (
+    <div className="rounded-2xl border-2 border-ink bg-white/95 p-8 text-ink">
+      <div className="flex flex-col items-center text-center">
+        <CheckCircle2 className="size-10 text-accent" strokeWidth={2} aria-hidden="true" />
+        <p className="mt-4 font-display text-xl font-semibold">Your message is ready</p>
+        <p className="mt-2 text-sm text-ink/70">
+          Gmail should open with these details already filled in. Press Send there to deliver it to my inbox.
+        </p>
+      </div>
+      <dl className="mt-6 space-y-3 text-sm">
+        <div>
+          <dt className="font-bold">Name</dt>
+          <dd className="text-ink/70">{details.name}</dd>
+        </div>
+        <div>
+          <dt className="font-bold">Email</dt>
+          <dd className="break-all text-ink/70">{details.email}</dd>
+        </div>
+        <div>
+          <dt className="font-bold">Topic</dt>
+          <dd className="text-ink/70">{details.topic || "—"}</dd>
+        </div>
+        <div>
+          <dt className="font-bold">Message</dt>
+          <dd className="whitespace-pre-wrap text-ink/70">{details.message}</dd>
+        </div>
+      </dl>
+      <a
+        href={gmailComposeUrl(details)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-ink px-6 py-3.5 text-sm font-bold text-cream"
+      >
+        Open email with details
+      </a>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border-2 border-ink bg-white px-6 py-3.5 text-sm font-bold text-ink transition-colors hover:bg-yellow"
+      >
+        Don't send, edit message
+      </button>
+    </div>
+  );
+}
 
 function Index() {
   const [formState, setFormState] = useState<"idle" | "sent">("idle");
+  const [sentMessage, setSentMessage] = useState<SentMessage | null>(null);
+  const [selectedSample, setSelectedSample] = useState<(typeof samples)[number] | null>(null);
+
+  useEffect(() => {
+    if (!selectedSample) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedSample(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedSample]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Placeholder behavior: no backend connected yet.
+    const data = new FormData(event.currentTarget);
+
+    if (String(data.get("website") ?? "").trim()) {
+      setFormState("sent");
+      return;
+    }
+
+    const details: SentMessage = {
+      name: String(data.get("name") ?? "").trim(),
+      email: String(data.get("email") ?? "").trim(),
+      topic: String(data.get("topic") ?? "").trim(),
+      message: String(data.get("message") ?? "").trim(),
+    };
+    const { subject, body } = buildMailDraft(details);
+    const mailtoUrl = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const popup = window.open(gmailComposeUrl(details), "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.href = mailtoUrl;
+    }
+
+    setSentMessage(details);
     setFormState("sent");
   };
 
@@ -186,7 +297,7 @@ function Index() {
           <div className="grid items-center gap-10 lg:grid-cols-[1.25fr_1fr]">
             <div className="animate-pop">
               <span className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide">
-                <span className="size-2.5 rounded-full bg-mint" /> BS Computer Science · Open to work
+                <span className="size-2.5 rounded-full bg-mint" /> Open to opportunities
               </span>
               <h1 className="mt-6 font-display text-[3.4rem] font-bold leading-[0.92] tracking-tight sm:text-7xl lg:text-[6rem]">
                 Melfie James
@@ -194,12 +305,16 @@ function Index() {
                 <span className="text-brand">Antonio</span>
               </h1>
               <p className="mt-4 font-display text-xl font-medium text-ink/70 sm:text-2xl">
-                Virtual Assistant <span className="text-accent">|</span> Administrative &amp; Digital Support
+                Aspiring Virtual Assistant <span className="text-accent">|</span> Administrative &amp; Digital
+                Support
               </p>
-              <p className="mt-5 max-w-md text-base leading-relaxed text-ink/70 sm:text-lg">
-                I provide reliable, organized support with email management, data entry, web research, Canva
-                content, and document organization — the day-to-day digital tasks that keep busy teams running
-                smoothly.
+              <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-ink/50 sm:text-base">
+                BS Computer Science Graduate
+              </p>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/70 sm:text-lg">
+                I'm seeking opportunities to provide reliable support with email management, data entry, calendar
+                management, Canva content, document organization, and other day-to-day digital tasks. I bring a
+                technical background, learn quickly, and am ready to pick up new tools, systems, and workflows.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a
@@ -218,11 +333,11 @@ function Index() {
             </div>
             <div className="relative animate-pop [animation-delay:100ms]">
               <img
-                src={heroPortrait}
-                alt="Melfie James Antonio in a bright casual workspace"
+                src={pelPhoto}
+                alt="Melfie James Antonio"
                 width={1024}
-                height={1280}
-                className="aspect-[4/5] w-full rotate-2 rounded-[2rem] border-2 border-ink bg-mint/60 object-cover"
+                height={1024}
+                className="aspect-[4/5] w-full rotate-2 rounded-[2rem] border-2 border-ink bg-[#ff9d80] object-cover object-[center_80%]"
               />
               <div className="absolute -bottom-5 -left-5 animate-floaty-a rounded-2xl border-2 border-ink bg-white px-4 py-3 text-sm font-bold shadow-hard-sm">
                 Response time
@@ -253,22 +368,6 @@ function Index() {
                 <p className="mt-2 text-sm leading-relaxed text-ink/70">{service.body}</p>
               </div>
             ))}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-ink p-6 text-cream shadow-hard-brand sm:col-span-2 lg:col-span-3">
-              <div className="flex items-center gap-4">
-                <div className="grid size-12 place-items-center rounded-2xl bg-white/10" aria-hidden="true">
-                  <Wrench className="size-6 text-cream" strokeWidth={2} />
-                </div>
-                <div>
-                  <h3 className="font-display text-xl font-semibold">Basic Technical Support</h3>
-                  <p className="text-sm text-cream/70">
-                    Troubleshooting small tech hiccups and helping with everyday digital tools.
-                  </p>
-                </div>
-              </div>
-              <span className="rounded-full bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wide">
-                A helpful plus
-              </span>
-            </div>
           </div>
         </section>
 
@@ -285,7 +384,7 @@ function Index() {
                 </h2>
               </div>
               <p className="max-w-xs text-sm font-medium text-ink/60">
-                These are illustrative samples I made to show my process — not real client work.
+                Click any sample to view the full image and see a closer look at the work.
               </p>
             </div>
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -294,23 +393,56 @@ function Index() {
                   key={sample.title}
                   className="overflow-hidden rounded-3xl border-2 border-ink bg-cream transition-transform hover:-translate-y-1"
                 >
-                  <img
-                    src={sample.src}
-                    alt={sample.alt}
-                    width={1024}
-                    height={768}
-                    loading="lazy"
-                    className={`aspect-[4/3] w-full border-b-2 border-ink object-cover ${sample.tint}`}
-                  />
-                  <div className="p-5">
-                    <h3 className="font-display text-lg font-semibold">{sample.title}</h3>
-                    <p className="mt-1 text-sm text-ink/70">{sample.body}</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSample(sample)}
+                    className="block w-full text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent"
+                    aria-label={`View ${sample.title} full size`}
+                  >
+                    <img
+                      src={sample.src}
+                      alt={sample.alt}
+                      width={1024}
+                      height={768}
+                      loading="lazy"
+                      className={`aspect-[4/3] w-full border-b-2 border-ink object-cover ${sample.tint}`}
+                    />
+                    <div className="p-5">
+                      <h3 className="font-display text-lg font-semibold">{sample.title}</h3>
+                      <p className="mt-1 text-sm text-ink/70">{sample.body}</p>
+                    </div>
+                  </button>
                 </article>
               ))}
             </div>
           </div>
         </section>
+
+        {selectedSample ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${selectedSample.title} preview`}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 sm:p-8"
+            onClick={() => setSelectedSample(null)}
+          >
+            <div className="relative flex max-h-full max-w-full items-center justify-center" onClick={(event) => event.stopPropagation()}>
+              <img
+                src={selectedSample.src}
+                alt={selectedSample.alt}
+                className="max-h-[90vh] max-w-[94vw] object-contain"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedSample(null)}
+                aria-label="Close image preview"
+                className="absolute right-2 top-2 grid size-11 place-items-center rounded-full border-2 border-ink bg-white text-ink shadow-hard-sm transition-transform hover:-translate-y-0.5"
+              >
+                <X className="size-6" strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* ABOUT + TOOLS */}
         <section id="about" aria-labelledby="about-heading" className="mx-auto max-w-6xl scroll-mt-8 px-5 py-16">
@@ -320,13 +452,13 @@ function Index() {
                 About <span className="text-accent">me</span>
               </h2>
               <p className="mt-5 text-lg leading-relaxed text-ink/70">
-                I'm a <span className="font-semibold text-ink">BS Computer Science graduate</span> with hands-on
-                experience in technology, troubleshooting, web development, research, and digital tools.
-              </p>
-              <p className="mt-4 text-lg leading-relaxed text-ink/70">
-                I'm a reliable, persistent learner — comfortable with new tools and workflows, and happy to adapt
-                to how your team prefers to work. I care about the small details that make a process feel
-                effortless.
+                I'm a <span className="font-semibold text-ink">BS Computer Science graduate</span> looking to
+                build my career as a Virtual Assistant. While I'm new to the VA field, I bring a strong foundation
+                in digital tools, organization, communication, and problem-solving. I'm a reliable and persistent
+                learner who is comfortable learning new tools and adapting to different workflows and client
+                preferences. I'm eager to support businesses with day-to-day tasks such as email management, data
+                entry, document organization, calendar management, Canva content, and other administrative tasks
+                while continuously developing my skills as a Virtual Assistant.
               </p>
               <ul className="mt-6 flex flex-wrap gap-2" aria-label="Qualities">
                 {traits.map((trait) => (
@@ -369,50 +501,60 @@ function Index() {
                     <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">
                       <Mail className="size-4" strokeWidth={2} />
                     </span>
-                    your.email@example.com <span className="text-xs font-medium text-cream/60">(add yours)</span>
+                    <a
+                      href={`mailto:${CONTACT_EMAIL}`}
+                      className="break-all transition-colors hover:text-yellow"
+                    >
+                      {CONTACT_EMAIL}
+                    </a>
                   </p>
                   <p className="flex items-center gap-3">
                     <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">
                       <Linkedin className="size-4" strokeWidth={2} />
                     </span>
-                    LinkedIn · Portfolio <span className="text-xs font-medium text-cream/60">(add links)</span>
+                    <a
+                      href="https://www.linkedin.com/in/melfie-james-antonio-5130aa422"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="transition-colors hover:text-yellow"
+                    >
+                      LinkedIn
+                    </a>
                   </p>
                 </div>
-                {/* Placeholder: replace href with your resume file link. */}
-                <a
-                  href="#contact"
-                  aria-disabled="true"
-                  title="Resume file coming soon — replace this link with your resume."
-                  className="mt-7 inline-block rounded-2xl bg-cream px-6 py-3.5 font-bold text-ink shadow-hard-sm transition-transform hover:-translate-y-0.5"
-                >
-                  Download Resume
-                </a>
               </div>
-              {formState === "sent" ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-ink bg-white/95 p-8 text-center text-ink">
-                  <CheckCircle2 className="size-10 text-accent" strokeWidth={2} aria-hidden="true" />
-                  <p className="mt-4 font-display text-xl font-semibold">Thanks for reaching out!</p>
-                  <p className="mt-2 text-sm text-ink/70">
-                    This form is a placeholder for now — once your email is connected, messages will go straight to
-                    your inbox.
-                  </p>
-                </div>
+              {formState === "sent" && sentMessage ? (
+                <SentMessageCard details={sentMessage} onEdit={() => setFormState("idle")} />
               ) : (
                 <form className="space-y-4" onSubmit={handleSubmit}>
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    className="hidden"
+                    aria-hidden="true"
+                  />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="sr-only" htmlFor="contact-name">Your name</label>
                     <input
                       id="contact-name"
+                      name="name"
                       type="text"
                       required
+                      autoComplete="name"
+                      defaultValue={sentMessage?.name}
                       placeholder="Your name"
                       className="w-full rounded-2xl border-2 border-ink bg-white/95 px-4 py-3.5 font-medium text-ink outline-none placeholder:text-ink/40 focus:ring-4 focus:ring-yellow/50"
                     />
                     <label className="sr-only" htmlFor="contact-email">Email address</label>
                     <input
                       id="contact-email"
+                      name="email"
                       type="email"
                       required
+                      autoComplete="email"
+                      defaultValue={sentMessage?.email}
                       placeholder="Email address"
                       className="w-full rounded-2xl border-2 border-ink bg-white/95 px-4 py-3.5 font-medium text-ink outline-none placeholder:text-ink/40 focus:ring-4 focus:ring-yellow/50"
                     />
@@ -420,21 +562,25 @@ function Index() {
                   <label className="sr-only" htmlFor="contact-topic">What do you need help with?</label>
                   <input
                     id="contact-topic"
+                    name="topic"
                     type="text"
+                    defaultValue={sentMessage?.topic}
                     placeholder="What do you need help with?"
                     className="w-full rounded-2xl border-2 border-ink bg-white/95 px-4 py-3.5 font-medium text-ink outline-none placeholder:text-ink/40 focus:ring-4 focus:ring-yellow/50"
                   />
                   <label className="sr-only" htmlFor="contact-message">A few details about your project</label>
                   <textarea
                     id="contact-message"
+                    name="message"
                     rows={4}
                     required
+                    defaultValue={sentMessage?.message}
                     placeholder="A few details about your project…"
                     className="w-full resize-none rounded-2xl border-2 border-ink bg-white/95 px-4 py-3.5 font-medium text-ink outline-none placeholder:text-ink/40 focus:ring-4 focus:ring-yellow/50"
                   />
                   <button
                     type="submit"
-                    className="w-full rounded-2xl bg-ink px-6 py-4 text-base font-bold text-cream shadow-hard-yellow-sm transition-transform hover:-translate-y-0.5"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-6 py-4 text-base font-bold text-cream shadow-hard-yellow-sm transition-transform hover:-translate-y-0.5"
                   >
                     Send message
                   </button>
@@ -450,7 +596,7 @@ function Index() {
           <span className="font-display font-semibold text-ink">
             melfie<span className="text-brand">.</span>
           </span>
-          <span>© 2026 Melfie James Antonio · Sample portfolio</span>
+          <span>© 2026 Melfie James Antonio</span>
           <span>Built with care</span>
         </div>
       </footer>
