@@ -77,44 +77,46 @@ const services: { icon: LucideIcon; tint: string; title: string; body: string }[
   },
 ];
 
+const publicAsset = (filename: string) => `${import.meta.env.BASE_URL}${filename}`;
+
 const samples = [
   {
-    src: "/email.png",
+    src: publicAsset("email.png"),
     alt: "Sample mockup of an organized email inbox with labeled folders",
     tint: "bg-lilac/40",
     title: "Organized Email Inbox",
     body: "A Gmail inbox organized with custom labels, priorities, follow-ups, filters, and quick-reply templates.",
   },
   {
-    src: "/canva.png",
+    src: publicAsset("canva.png"),
     alt: "Sample Canva social media promo graphic with bold typography",
     tint: "bg-brand/15",
     title: "Canva Graphic Design",
     body: "A Canva-designed event graphic demonstrating clean layout, typography, and visual consistency.",
   },
   {
-    src: "/excel.png",
+    src: publicAsset("excel.png"),
     alt: "Sample cleaned spreadsheet with sorted columns and highlighted totals",
     tint: "bg-mint/50",
     title: "Cleaned Spreadsheet",
     body: "A customer dataset cleaned, organized, formatted, sorted, and prepared for easier information management.",
   },
   {
-    src: "/calendar.png",
+    src: publicAsset("calendar.png"),
     alt: "Sample weekly calendar layout with meetings and reminders",
     tint: "bg-accent/15",
     title: "Calendar & Schedule Management",
     body: "A structured Google Calendar demonstrating meetings, deadlines, reminders, and organized weekly scheduling.",
   },
   {
-    src: "/format.png",
+    src: publicAsset("format.png"),
     alt: "Sample professionally formatted document cover and body",
     tint: "bg-yellow/40",
     title: "Formatted Document",
     body: "A professionally formatted business report with consistent headings, spacing, typography, and structured information.",
   },
   {
-    src: "/dashboard.png",
+    src: publicAsset("dashboard.png"),
     alt: "Sample task management dashboard with checklists and progress",
     tint: "bg-lilac/40",
     title: "Task Management Dashboard",
