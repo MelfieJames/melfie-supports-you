@@ -1,20 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  ArrowLeft,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
+  Download,
+  File as FileIcon,
+  FileSpreadsheet,
+  FileText,
+  Folder,
+  FolderPlus,
   FolderOpen,
+  Image as ImageIcon,
   Linkedin,
+  LockKeyhole,
   Mail,
   Palette,
+  Pencil,
+  Trash2,
+  Upload,
   X,
   Table2,
   type LucideIcon,
 } from "lucide-react";
 
 import pelPhoto from "@/assets/pel.jpg";
-import sampleSpreadsheet from "@/assets/sample-spreadsheet.jpg";
-import sampleDashboard from "@/assets/sample-dashboard.jpg";
+import {
+  loadSampleProjects,
+  saveSampleProjects,
+  type SampleProjectItem,
+} from "@/lib/sample-project-storage";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -77,52 +93,18 @@ const services: { icon: LucideIcon; tint: string; title: string; body: string }[
   },
 ];
 
-const publicAsset = (filename: string) => `${import.meta.env.BASE_URL}${filename}`;
-
-const samples = [
-  {
-    src: publicAsset("email.png"),
-    alt: "Sample mockup of an organized email inbox with labeled folders",
-    tint: "bg-lilac/40",
-    title: "Organized Email Inbox",
-    body: "A Gmail inbox organized with custom labels, priorities, follow-ups, filters, and quick-reply templates.",
-  },
-  {
-    src: publicAsset("canva.png"),
-    alt: "Sample Canva social media promo graphic with bold typography",
-    tint: "bg-brand/15",
-    title: "Canva Graphic Design",
-    body: "A Canva-designed event graphic demonstrating clean layout, typography, and visual consistency.",
-  },
-  {
-    src: publicAsset("excel.png"),
-    alt: "Sample cleaned spreadsheet with sorted columns and highlighted totals",
-    tint: "bg-mint/50",
-    title: "Cleaned Spreadsheet",
-    body: "A customer dataset cleaned, organized, formatted, sorted, and prepared for easier information management.",
-  },
-  {
-    src: publicAsset("calendar.png"),
-    alt: "Sample weekly calendar layout with meetings and reminders",
-    tint: "bg-accent/15",
-    title: "Calendar & Schedule Management",
-    body: "A structured Google Calendar demonstrating meetings, deadlines, reminders, and organized weekly scheduling.",
-  },
-  {
-    src: publicAsset("format.png"),
-    alt: "Sample professionally formatted document cover and body",
-    tint: "bg-yellow/40",
-    title: "Formatted Document",
-    body: "A professionally formatted business report with consistent headings, spacing, typography, and structured information.",
-  },
-  {
-    src: publicAsset("dashboard.png"),
-    alt: "Sample task management dashboard with checklists and progress",
-    tint: "bg-lilac/40",
-    title: "Task Management Dashboard",
-    body: "A Trello workflow organizing tasks by priority, deadlines, and progress across To Do, In Progress, and Completed stages.",
-  },
+const initialProjectItems: SampleProjectItem[] = [
+  { id: "general-va-samples-root", name: "General VA Sample Projects", type: "folder", parentId: null },
 ];
+
+const PROJECT_PASSWORD_SHA256 = "1e6064cb74be754e8943d3bc95dc65927a61cf471c27ad7e16700adc3e596805";
+
+type MutationRequest =
+  | { action: "unlock" }
+  | { action: "add-folder"; parentId: string | null }
+  | { action: "add-files"; parentId: string | null }
+  | { action: "rename"; itemId: string }
+  | { action: "delete"; itemId: string };
 
 const traits = ["Reliable", "Detail-oriented", "Quick learner", "Tech-savvy"];
 
@@ -165,6 +147,21 @@ function buildMailDraft(details: SentMessage) {
 function gmailComposeUrl(details: SentMessage) {
   const { subject, body } = buildMailDraft(details);
   return `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent(CONTACT_EMAIL)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error(`Could not read ${file.name}.`));
+      }
+    };
+    reader.onerror = () => reject(reader.error ?? new Error(`Could not read ${file.name}.`));
+    reader.readAsDataURL(file);
+  });
 }
 
 function SentMessageCard({ details, onEdit }: { details: SentMessage; onEdit: () => void }) {
@@ -217,22 +214,216 @@ function SentMessageCard({ details, onEdit }: { details: SentMessage; onEdit: ()
 function Index() {
   const [formState, setFormState] = useState<"idle" | "sent">("idle");
   const [sentMessage, setSentMessage] = useState<SentMessage | null>(null);
-  const [selectedSample, setSelectedSample] = useState<(typeof samples)[number] | null>(null);
+  const [projectItems, setProjectItems] = useState<SampleProjectItem[]>([]);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [projectStorageReady, setProjectStorageReady] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [isOwnerView, setIsOwnerView] = useState(false);
+  const [selectedPreview, setSelectedPreview] = useState<SampleProjectItem | null>(null);
+  const [mutationRequest, setMutationRequest] = useState<MutationRequest | null>(null);
+  const [folderName, setFolderName] = useState("");
+  const [password, setPassword] = useState("");
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!selectedSample) {
+    let isActive = true;
+
+    loadSampleProjects()
+      .then(async (storedItems) => {
+        const hasRootFolder = storedItems?.some((item) => item.id === initialProjectItems[0]?.id) ?? false;
+        const items =
+          storedItems && hasRootFolder
+            ? storedItems.map((item) =>
+                item.id === initialProjectItems[0]?.id
+                ? { ...item, name: "General VA Sample Projects" }
+                  : item,
+              )
+            : initialProjectItems;
+        const needsSave =
+          !hasRootFolder ||
+          storedItems?.find((item) => item.id === initialProjectItems[0]?.id)?.name !==
+            "General VA Sample Projects";
+        if (needsSave) {
+          await saveSampleProjects(items);
+        }
+        if (isActive) {
+          setProjectItems(items);
+          setProjectStorageReady(true);
+          setProjectsLoaded(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isActive) {
+          setProjectStorageReady(false);
+          setStorageError(error instanceof Error ? error.message : "Could not load sample projects.");
+          setProjectsLoaded(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPreview && !mutationRequest) {
       return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setSelectedSample(null);
+        setSelectedPreview(null);
+        setMutationRequest(null);
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [selectedSample]);
+  }, [selectedPreview, mutationRequest]);
+
+  const openMutation = (request: MutationRequest) => {
+    setMutationRequest(request);
+    setFolderName(
+      request.action === "rename"
+        ? projectItems.find((item) => item.id === request.itemId)?.name ?? ""
+        : "",
+    );
+    setPassword("");
+    setMutationError(null);
+  };
+
+  const saveProjectItems = async (items: SampleProjectItem[]) => {
+    try {
+      await saveSampleProjects(items);
+      setProjectItems(items);
+      setStorageError(null);
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : "Could not save sample projects.");
+      throw error;
+    }
+  };
+
+  const handleProjectMutation = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!mutationRequest) return;
+
+    if (mutationRequest.action === "unlock") {
+      try {
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+        const passwordHash = Array.from(new Uint8Array(digest), (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join("");
+        if (passwordHash !== PROJECT_PASSWORD_SHA256) {
+          setMutationError("That password is not correct. Please try again.");
+          return;
+        }
+        setIsOwnerView(true);
+        setMutationRequest(null);
+        setPassword("");
+      } catch (error) {
+        setMutationError(error instanceof Error ? error.message : "Could not verify the password.");
+      }
+      return;
+    }
+
+    if (!isOwnerView) {
+      setMutationRequest(null);
+      return;
+    }
+
+    setIsSaving(true);
+    setMutationError(null);
+    try {
+      if (mutationRequest.action === "add-folder") {
+        const name = folderName.trim();
+        if (!name) {
+          setMutationError("Enter a name for the new folder.");
+          return;
+        }
+        await saveProjectItems([
+          ...projectItems,
+          {
+            id: crypto.randomUUID(),
+            name,
+            type: "folder",
+            parentId: mutationRequest.parentId,
+          },
+        ]);
+      } else if (mutationRequest.action === "add-files") {
+        const formData = new FormData(event.currentTarget);
+        const files = formData.getAll("projectFiles").filter((value): value is File => value instanceof File);
+        if (files.length === 0) {
+          setMutationError("Choose one or more files to add.");
+          return;
+        }
+        const addedItems = await Promise.all(
+          files.map(async (file) => ({
+            id: crypto.randomUUID(),
+            name: file.name,
+            type: "file" as const,
+            parentId: mutationRequest.parentId,
+            mimeType: file.type || "application/octet-stream",
+            url: await readFileAsDataUrl(file),
+            size: file.size,
+          })),
+        );
+        await saveProjectItems([...projectItems, ...addedItems]);
+      } else if (mutationRequest.action === "rename") {
+        const name = folderName.trim();
+        if (!name) {
+          setMutationError("Enter a name.");
+          return;
+        }
+        await saveProjectItems(
+          projectItems.map((item) =>
+            item.id === mutationRequest.itemId ? { ...item, name } : item,
+          ),
+        );
+      } else {
+        if (mutationRequest.itemId === initialProjectItems[0]?.id) {
+          setMutationError("The General VA Sample Projects folder cannot be deleted.");
+          return;
+        }
+        const removedIds = new Set([mutationRequest.itemId]);
+        let foundChild = true;
+        while (foundChild) {
+          foundChild = false;
+          for (const item of projectItems) {
+            if (item.parentId && removedIds.has(item.parentId) && !removedIds.has(item.id)) {
+              removedIds.add(item.id);
+              foundChild = true;
+            }
+          }
+        }
+        await saveProjectItems(projectItems.filter((item) => !removedIds.has(item.id)));
+        if (removedIds.has(currentFolderId ?? "")) {
+          setCurrentFolderId(null);
+        }
+      }
+      setMutationRequest(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update sample projects.";
+      setMutationError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const rootProjectFolder = projectItems.find((item) => item.id === initialProjectItems[0]?.id);
+  const currentFolder = projectItems.find(
+    (item) => item.id === currentFolderId && item.type === "folder",
+  );
+  const visibleItems = projectItems.filter((item) => item.parentId === (currentFolder?.id ?? null));
+  const breadcrumbs: SampleProjectItem[] = [];
+  let breadcrumbFolder = currentFolder;
+  while (breadcrumbFolder) {
+    breadcrumbs.unshift(breadcrumbFolder);
+    breadcrumbFolder = projectItems.find(
+      (item) => item.id === breadcrumbFolder?.parentId && item.type === "folder",
+    );
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -331,6 +522,14 @@ function Index() {
                 >
                   Contact Me
                 </a>
+                <a
+                  href="/resume.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-2xl border-2 border-ink bg-white px-7 py-4 text-base font-bold transition-colors hover:bg-mint"
+                >
+                  View Resume
+                </a>
               </div>
             </div>
             <div className="relative animate-pop [animation-delay:100ms]">
@@ -382,67 +581,358 @@ function Index() {
                   Sample projects
                 </span>
                 <h2 id="work-heading" className="mt-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-                  A peek at the <span className="text-brand">work</span>
+                  <span className="text-brand">VA Sample Projects</span>
                 </h2>
               </div>
-              <p className="max-w-xs text-sm font-medium text-ink/60">
-                Click any sample to view the full image and see a closer look at the work.
-              </p>
-            </div>
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {samples.map((sample) => (
-                <article
-                  key={sample.title}
-                  className="overflow-hidden rounded-3xl border-2 border-ink bg-cream transition-transform hover:-translate-y-1"
-                >
+              <div className="flex flex-wrap gap-2">
+                <div className="inline-flex rounded-xl border-2 border-ink bg-cream p-1" aria-label="Project view">
                   <button
                     type="button"
-                    onClick={() => setSelectedSample(sample)}
-                    className="block w-full text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent"
-                    aria-label={`View ${sample.title} full size`}
+                    aria-pressed={!isOwnerView}
+                    onClick={() => {
+                      setIsOwnerView(false);
+                      setCurrentFolderId(null);
+                      setSelectedPreview(null);
+                      setMutationRequest(null);
+                    }}
+                    className={`rounded-lg px-3 py-2 text-sm font-bold transition-colors ${isOwnerView ? "text-ink/60 hover:bg-white" : "bg-white shadow-sm"}`}
                   >
-                    <img
-                      src={sample.src}
-                      alt={sample.alt}
-                      width={1024}
-                      height={768}
-                      loading="lazy"
-                      className={`aspect-[4/3] w-full border-b-2 border-ink object-cover ${sample.tint}`}
-                    />
-                    <div className="p-5">
-                      <h3 className="font-display text-lg font-semibold">{sample.title}</h3>
-                      <p className="mt-1 text-sm text-ink/70">{sample.body}</p>
-                    </div>
+                    Client View
                   </button>
-                </article>
-              ))}
+                  <button
+                    type="button"
+                    aria-pressed={isOwnerView}
+                    disabled={isOwnerView}
+                    onClick={() => openMutation({ action: "unlock" })}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${isOwnerView ? "bg-ink text-cream" : "text-ink/60 hover:bg-white"}`}
+                  >
+                    <LockKeyhole className="size-3.5" aria-hidden="true" />
+                    Owner View
+                  </button>
+                </div>
+                {isOwnerView ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!projectsLoaded || !projectStorageReady || !rootProjectFolder}
+                      onClick={() =>
+                        openMutation({
+                          action: "add-folder",
+                          parentId: currentFolder?.id ?? null,
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-white px-4 py-2.5 text-sm font-bold transition-colors hover:bg-yellow disabled:opacity-50"
+                    >
+                      <FolderPlus className="size-4" aria-hidden="true" />
+                      New folder
+                    </button>
+                    {currentFolder ? (
+                      <button
+                        type="button"
+                        disabled={!projectsLoaded || !projectStorageReady}
+                        onClick={() => openMutation({ action: "add-files", parentId: currentFolder.id })}
+                        className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-cream transition-colors hover:bg-brand disabled:opacity-50"
+                      >
+                        <Upload className="size-4" aria-hidden="true" />
+                        Add files
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
             </div>
+
+            <div className="mt-7 rounded-3xl border-2 border-ink bg-cream p-4 shadow-hard sm:p-6">
+              <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink/10 pb-4 text-sm font-semibold">
+                {currentFolder ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentFolderId(null)}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-white"
+                  >
+                    <ArrowLeft className="size-4" aria-hidden="true" />
+                    All projects
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-2 py-1">
+                    <FolderOpen className="size-4" aria-hidden="true" />
+                    All projects
+                  </span>
+                )}
+                {breadcrumbs.map((folder) => (
+                  <span key={folder.id} className="inline-flex items-center gap-2">
+                    <ChevronRight className="size-4 text-ink/40" aria-hidden="true" />
+                    <button
+                      type="button"
+                      onClick={() => setCurrentFolderId(folder.id)}
+                      className="rounded-lg px-2 py-1 hover:bg-white"
+                      aria-current={folder.id === currentFolder?.id ? "page" : undefined}
+                    >
+                      {folder.name}
+                    </button>
+                  </span>
+                ))}
+                <span className="ml-auto text-xs font-medium text-ink/55">
+                  {visibleItems.length} {visibleItems.length === 1 ? "item" : "items"}
+                </span>
+              </div>
+
+              {storageError ? (
+                <p role="alert" className="mt-4 rounded-xl border-2 border-red-700 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                  Project storage error: {storageError}
+                </p>
+              ) : null}
+
+              {!projectsLoaded ? (
+                <p className="py-12 text-center text-sm font-medium text-ink/60">Opening your sample projects…</p>
+              ) : visibleItems.length === 0 ? (
+                <div className="py-12 text-center">
+                  <FolderOpen className="mx-auto size-10 text-ink/35" aria-hidden="true" />
+                  <p className="mt-3 font-semibold">This folder is empty</p>
+                  <p className="mt-1 text-sm text-ink/60">Add a folder or choose files to get started.</p>
+                </div>
+              ) : (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {visibleItems.map((item) => {
+                    const childCount = projectItems.filter((child) => child.parentId === item.id).length;
+                    const isImage = item.type === "file" && item.mimeType?.startsWith("image/");
+                    const isSpreadsheet =
+                      item.type === "file" &&
+                      (item.mimeType?.includes("spreadsheet") ||
+                        /\.(xls|xlsx|csv|ods)$/i.test(item.name));
+
+                    return (
+                      <article
+                        key={item.id}
+                        className="group relative min-w-0 overflow-hidden rounded-2xl border-2 border-ink bg-white transition-transform hover:-translate-y-0.5"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.type === "folder") {
+                              setCurrentFolderId(item.id);
+                            } else if (isImage) {
+                              setSelectedPreview(item);
+                            } else if (item.url) {
+                              const downloadLink = document.createElement("a");
+                              downloadLink.href = item.url;
+                              downloadLink.download = item.name;
+                              downloadLink.click();
+                            }
+                          }}
+                          className="flex min-h-28 w-full items-center gap-4 p-4 text-left disabled:cursor-default"
+                          aria-label={item.type === "folder" ? `Open folder ${item.name}` : isImage ? `Preview ${item.name}` : `Download ${item.name}`}
+                        >
+                          <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-yellow/35">
+                            {isImage && item.url ? (
+                              <img src={item.url} alt="" className="size-full object-cover" />
+                            ) : item.type === "folder" ? (
+                              <Folder className="size-7 text-ink" aria-hidden="true" />
+                            ) : isSpreadsheet ? (
+                              <FileSpreadsheet className="size-7 text-ink" aria-hidden="true" />
+                            ) : (
+                              <FileIcon className="size-7 text-ink" aria-hidden="true" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-display font-semibold">{item.name}</span>
+                            <span className="mt-1 block text-xs text-ink/55">
+                              {item.type === "folder"
+                                ? `${childCount} ${childCount === 1 ? "item" : "items"}`
+                                : `${item.mimeType || "File"}${item.size ? ` · ${(item.size / 1024).toFixed(0)} KB` : ""}`}
+                            </span>
+                          </span>
+                          {item.type === "folder" ? (
+                            <ChevronRight className="size-4 shrink-0 text-ink/45" aria-hidden="true" />
+                          ) : isImage ? (
+                            <ImageIcon className="size-4 shrink-0 text-ink/45" aria-hidden="true" />
+                          ) : (
+                            <Download className="size-4 shrink-0 text-ink/45" aria-hidden="true" />
+                          )}
+                        </button>
+                        {isOwnerView && item.type === "folder" ? (
+                          <div className="border-t border-ink/10 px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={() => openMutation({ action: "add-files", parentId: item.id })}
+                              aria-label={`Add files to ${item.name}`}
+                              className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-bold text-ink/70 transition-colors hover:bg-yellow hover:text-ink"
+                            >
+                              <Upload className="size-3.5" aria-hidden="true" />
+                              Add files to this folder
+                            </button>
+                          </div>
+                        ) : null}
+                        {isOwnerView && item.id !== initialProjectItems[0]?.id ? (
+                          <div className="absolute right-2 top-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => openMutation({ action: "rename", itemId: item.id })}
+                              aria-label={`Rename ${item.name}`}
+                              className="grid size-8 place-items-center rounded-lg bg-white/90 text-ink/60 transition-colors hover:bg-yellow hover:text-ink"
+                            >
+                              <Pencil className="size-4" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openMutation({ action: "delete", itemId: item.id })}
+                              aria-label={`Delete ${item.name}`}
+                              className="grid size-8 place-items-center rounded-lg bg-white/90 text-ink/60 transition-colors hover:bg-red-100 hover:text-red-800"
+                            >
+                              <Trash2 className="size-4" aria-hidden="true" />
+                            </button>
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <p className="mt-4 flex items-center gap-2 text-xs text-ink/55">
+              <LockKeyhole className="size-3.5" aria-hidden="true" />
+              {isOwnerView
+                ? "Owner view is active. Switch to Client View to hide editing controls."
+                : "Client view is read-only. Only the owner can add, edit, or delete project items."}
+            </p>
           </div>
         </section>
 
-        {selectedSample ? (
+        {selectedPreview ? (
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`${selectedSample.title} preview`}
+            aria-label={`${selectedPreview.name} preview`}
             className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 sm:p-8"
-            onClick={() => setSelectedSample(null)}
+            onClick={() => setSelectedPreview(null)}
           >
             <div className="relative flex max-h-full max-w-full items-center justify-center" onClick={(event) => event.stopPropagation()}>
               <img
-                src={selectedSample.src}
-                alt={selectedSample.alt}
+                src={selectedPreview.url}
+                alt={selectedPreview.name}
                 className="max-h-[90vh] max-w-[94vw] object-contain"
               />
               <button
                 type="button"
-                onClick={() => setSelectedSample(null)}
+                onClick={() => setSelectedPreview(null)}
                 aria-label="Close image preview"
                 className="absolute right-2 top-2 grid size-11 place-items-center rounded-full border-2 border-ink bg-white text-ink shadow-hard-sm transition-transform hover:-translate-y-0.5"
               >
                 <X className="size-6" strokeWidth={2.5} aria-hidden="true" />
               </button>
             </div>
+          </div>
+        ) : null}
+
+        {mutationRequest ? (
+          <div
+            role="presentation"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/75 p-4"
+            onClick={() => setMutationRequest(null)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="project-mutation-title"
+              className="w-full max-w-md rounded-3xl border-2 border-ink bg-cream p-6 shadow-hard-lg"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h3 id="project-mutation-title" className="font-display text-2xl font-bold">
+                {mutationRequest.action === "unlock"
+                  ? "Switch to Owner View"
+                  : mutationRequest.action === "delete"
+                    ? "Delete project item?"
+                    : mutationRequest.action === "rename"
+                      ? "Rename project item"
+                      : mutationRequest.action === "add-folder"
+                        ? "Create a folder"
+                        : "Add files"}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink/65">
+                {mutationRequest.action === "unlock"
+                  ? "Enter the owner password to unlock folder and file management."
+                  : mutationRequest.action === "delete"
+                    ? `Deleting “${projectItems.find((item) => item.id === mutationRequest.itemId)?.name ?? "this item"}” also removes everything inside it.`
+                    : "This change will be saved in this browser."}
+              </p>
+              <form className="mt-5 space-y-4" onSubmit={handleProjectMutation}>
+                {mutationRequest.action === "add-folder" || mutationRequest.action === "rename" ? (
+                  <label className="block text-sm font-semibold">
+                    {mutationRequest.action === "rename" ? "New name" : "Folder name"}
+                    <input
+                      autoFocus
+                      required
+                      maxLength={80}
+                      value={folderName}
+                      onChange={(event) => setFolderName(event.target.value)}
+                      className="mt-1.5 w-full rounded-xl border-2 border-ink bg-white px-4 py-3 font-medium outline-none focus:ring-4 focus:ring-yellow/50"
+                      placeholder="e.g. Client onboarding"
+                    />
+                  </label>
+                ) : null}
+                {mutationRequest.action === "add-files" ? (
+                  <label className="block text-sm font-semibold">
+                    Choose images, spreadsheets, or other files
+                    <input
+                      autoFocus
+                      type="file"
+                      name="projectFiles"
+                      multiple
+                      className="mt-1.5 block w-full rounded-xl border-2 border-ink bg-white p-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-yellow file:px-3 file:py-2 file:font-semibold"
+                    />
+                    <span className="mt-1 block text-xs font-normal text-ink/60">
+                      PNG, JPG, Excel, CSV, PDF, and other file types are supported.
+                    </span>
+                  </label>
+                ) : null}
+                {mutationRequest.action === "unlock" ? (
+                  <label className="block text-sm font-semibold">
+                    Owner password
+                    <input
+                      autoFocus
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="mt-1.5 w-full rounded-xl border-2 border-ink bg-white px-4 py-3 font-medium outline-none focus:ring-4 focus:ring-yellow/50"
+                      placeholder="Enter owner password"
+                    />
+                  </label>
+                ) : null}
+                {mutationError ? (
+                  <p role="alert" className="rounded-xl bg-red-100 px-3 py-2 text-sm font-semibold text-red-800">
+                    {mutationError}
+                  </p>
+                ) : null}
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setMutationRequest(null)}
+                    className="rounded-xl border-2 border-ink bg-white px-4 py-2.5 text-sm font-bold hover:bg-yellow"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-cream hover:bg-brand disabled:opacity-50"
+                  >
+                    {isSaving
+                      ? "Saving…"
+                      : mutationRequest.action === "unlock"
+                        ? "Unlock Owner View"
+                        : mutationRequest.action === "delete"
+                          ? "Delete"
+                          : mutationRequest.action === "rename"
+                            ? "Save name"
+                          : mutationRequest.action === "add-folder"
+                            ? "Create folder"
+                            : "Add files"}
+                  </button>
+                </div>
+              </form>
+            </section>
           </div>
         ) : null}
 
@@ -521,6 +1011,19 @@ function Index() {
                       className="transition-colors hover:text-yellow"
                     >
                       LinkedIn
+                    </a>
+                  </p>
+                  <p className="flex items-center gap-3">
+                    <span className="grid size-9 place-items-center rounded-xl bg-white/15" aria-hidden="true">
+                      <FileText className="size-4" strokeWidth={2} />
+                    </span>
+                    <a
+                      href="/resume.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="transition-colors hover:text-yellow"
+                    >
+                      View Resume
                     </a>
                   </p>
                 </div>
