@@ -13,7 +13,7 @@ export default defineConfig({
     prerender: {
       enabled: true,
       autoStaticPathsDiscovery: true,
-      crawlLinks: true,
+      crawlLinks: false,
     },
 
     server: { entry: "server" },

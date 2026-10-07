@@ -523,7 +523,7 @@ function Index() {
                   Contact Me
                 </a>
                 <a
-                  href="/resume.pdf"
+                  href={`${import.meta.env.BASE_URL}resume.pdf`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-2xl border-2 border-ink bg-white px-7 py-4 text-base font-bold transition-colors hover:bg-mint"
@@ -1018,7 +1018,7 @@ function Index() {
                       <FileText className="size-4" strokeWidth={2} />
                     </span>
                     <a
-                      href="/resume.pdf"
+                      href={`${import.meta.env.BASE_URL}resume.pdf`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="transition-colors hover:text-yellow"
@@ -1108,3 +1108,4 @@ function Index() {
     </div>
   );
 }
+
